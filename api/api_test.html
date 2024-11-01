@@ -110,7 +110,7 @@
             const gameNumber = document.getElementById('game_number').value;
             const date = document.getElementById('date').value;
 
-            const url = `http://192.168.0.12:8000/batting_info/${gameNumber}/${date}`; // Use your local IP
+            const url = `/batting_info/${gameNumber}/${date}`;
 
             try {
                 const response = await fetch(url);
