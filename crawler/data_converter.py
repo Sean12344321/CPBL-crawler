@@ -67,77 +67,6 @@ class pitcher_performance:
     def __init__(self, data):
         self.games_played, self.games_started, self.relief_appearances, self.complete_games, self.shutouts, self.no_walks_hits, self.wins, self.losses, self.saves, self.blown_saves, self.holds, self.innings_pitched, self.whip, self.era, self.batters_faced, self.pitches_thrown, self.hits_allowed, self.home_runs_allowed, self.walks, self.intentional_walks, self.hit_by_pitch, self.strikeouts, self.wild_pitches, self.balks, self.runs_allowed, self.earned_runs, self.ground_outs, self.fly_outs, self.ground_fly_ratio = data
 
-class Scoreboard:
-    innings: List[str]  # 局數
-    runs: int           # 得分
-    hits: int           # 安打
-    errors: int         # 失誤
-
-    def __init__(self, data):
-        *self.innings, self.runs, self.hits, self.errors = data
-        
-class BattleStat:
-    name: str            # 名字
-    position: str        # 守備位置
-    batting_results: List[str]  # 打擊結果
-    at_bats: int         # 打數
-    hits: int            # 安打
-    home_runs: int       # 全壘打
-    rbis: int            # 打點
-    scores: int          # 得分
-    batting_avg: float   # 打擊率
-
-    def __init__(self, data):
-        self.name, self.position, *self.batting_results, self.at_bats, self.hits, self.home_runs, self.rbis, self.scores, self.batting_avg = data
-
-class BattingStat:
-    name: str                  # 名字
-    position: str              # 守備位置
-    at_bats: int               # 打數
-    scores: int                # 得分
-    hits: int                  # 安打
-    rbis: int                  # 打點
-    doubles: int               # 二安
-    triples: int               # 三安
-    home_runs: int             # 全壘打
-    double_plays: int          # 雙殺打
-    walks: int                 # 四壞
-    intentional_walks: int     # 故四
-    hit_by_pitch: int          # 死球
-    strikeouts: int            # 被三振
-    sacrifice_hits: int        # 犧打
-    sacrifice_flies: int       # 犧飛
-    stolen_bases: int          # 盜壘
-    caught_stealing: int       # 盜壘刺
-    errors: int                # 失誤
-    batting_avg: float         # 打擊率
-
-    def __init__(self, data):
-        self.name, self.position, self.at_bats, self.scores, self.hits, self.rbis, self.doubles, self.triples, self.home_runs, self.double_plays, self.walks, self.intentional_walks, self.hit_by_pitch, self.strikeouts, self.sacrifice_hits, self.sacrifice_flies, self.stolen_bases, self.caught_stealing, self.errors, self.batting_avg = data
-
-class PitchingStat:
-    name: str  # 名字
-    innings_pitched: int  # 投球局數
-    plate_appearances: int  # 面對打席
-    pitches_thrown: int  # 投球數
-    strikes: int  # 好球數
-    hits: int  # 安打
-    home_runs: int  # 全壘打
-    walks: int  # 四壞
-    intentional_walks: int  # 故四
-    hit_by_pitch: int  # 死球
-    strikeouts: int  # 奪三振
-    wild_pitches: int  # 暴投
-    pitcher_fouls: int  # 投手犯規
-    earned_runs: int  # 失分
-    self_earned_runs: int  # 自責分
-    errors: int  # 失誤
-    era: float  # 防禦率
-    on_base_percentage: float  # 每局被上壘率
-
-    def __init__(self, data):
-        self.name, self.innings_pitched, self.plate_appearances, self.pitches_thrown, self.strikes, self.hits, self.home_runs, self.walks, self.intentional_walks, self.hit_by_pitch, self.strikeouts, self.wild_pitches, self.pitcher_fouls, self.earned_runs, self.self_earned_runs, self.errors, self.era, self.on_base_percentage = data
-
 def save_to_json(data, filename):
     current_folder = os.path.dirname(__file__)
     file_path = os.path.join(current_folder, filename)
@@ -160,7 +89,7 @@ def convert_to_numbers(data):
     return converted_data
 
 
-def convert_dashboard_data_to_json(scraped_data):
+def convert_dashboard_data_and_insert_to_database(scraped_data):
     player_ids = []
     for player in scraped_data['players']:
         converted_player_data = {

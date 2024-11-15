@@ -5,11 +5,11 @@ from selenium.webdriver.support import expected_conditions as EC
 import re, threading
 all_data = {}
 
-def get_player_data(url):
+def get_player_data(url, team_name):
     driver = webdriver.Chrome()
     driver.get(url)
     player_info = {}
-    player_info['team'] = driver.find_element(By.CLASS_NAME, "team").text
+    player_info['team'] = team_name
     player_info['name'] = driver.find_element(By.CLASS_NAME, "name").text
     while player_info['name'][-1].isdigit():
         player_info['name'] = player_info['name'][:-1]
@@ -129,13 +129,13 @@ def get_dashboard_data(url):
         all_data['players'] = []
         threads = []
         for url in away_batter_urls[1:]:
-            threads.append(threading.Thread(target=get_player_data, args = (url.get_attribute("href"),)))
+            threads.append(threading.Thread(target=get_player_data, args = (url.get_attribute("href"),away_name,)))
         for url in home_batter_urls[1:]:
-            threads.append(threading.Thread(target=get_player_data, args = (url.get_attribute("href"),)))
+            threads.append(threading.Thread(target=get_player_data, args = (url.get_attribute("href"),home_name,)))
         for url in away_pitcher_urls[1:]:
-            threads.append(threading.Thread(target=get_player_data, args = (url.get_attribute("href"),)))
+            threads.append(threading.Thread(target=get_player_data, args = (url.get_attribute("href"),away_name,)))
         for url in home_pitcher_urls[1:]:
-            threads.append(threading.Thread(target=get_player_data, args = (url.get_attribute("href"),)))
+            threads.append(threading.Thread(target=get_player_data, args = (url.get_attribute("href"),home_name,)))
         batch_size = 10  # Adjust based on system capacity
 
         for i in range(0, len(threads), batch_size):
@@ -149,7 +149,4 @@ def get_dashboard_data(url):
         print(f"An error occurred: {e}")
     finally:
         driver.quit()
-    print(all_data)
     return all_data
-
-get_dashboard_data('https://www.cpbl.com.tw/box/index?gameSno=4&year=2024&kindCode=F')

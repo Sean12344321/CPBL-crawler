@@ -107,7 +107,7 @@
     <script>
         document.getElementById('game_info').addEventListener('click', async () => {
             const gameID = document.getElementById('game_id').value;
-            const url = `/game_info/${gameID}`;
+            const url = `/game_info`;
             try {
                 const response = await fetch(url);
                 if (!response.ok) {

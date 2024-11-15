@@ -26,12 +26,7 @@ Replace the old chromedriver.exe in your project or PATH with the new one.
 go to api folder
 
 ```bash
-python -m main
+uvicorn main:app --reload
 ```
 
-(if want to insert data into DB)
-go to crawler folder
-
-```bash
-python -m main
-```
+!!shouldn't touch crawler code
