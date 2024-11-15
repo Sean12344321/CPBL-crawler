@@ -49,7 +49,38 @@ async def read_item(game_number: int=Path(ge = 1), date: str=Path(..., descripti
         raise HTTPException(status_code=404, detail="No data found")
     return [dict(row) for row in result]
 
+@app.get("/game_info/{game_id}")
+async def read_item(game_id: int=Path(ge = 1)):
+    dictcur = conn.cursor(cursor_factory=RealDictCursor)
+    dictcur.execute(
+        "SELECT * FROM game WHERE id = %s", 
+        (game_id,)
+    )
+    result = dictcur.fetchone()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="No data found")
+    return dict(result)
+
 if __name__ == '__main__':
     ip_address = socket.gethostbyname(socket.gethostname())
     uvicorn.run(app, host=ip_address, port=8000)
+
+@app.get("/player_info/{game_id}")
+async def read_item(game_id: int=Path(ge = 1)):
+    dictcur = conn.cursor(cursor_factory=RealDictCursor)
+    dictcur.execute(
+        "SELECT player_ids FROM game WHERE id = %s", 
+        (game_id,)
+    )
+    player_ids = dictcur.fetchone()['player_ids']
+    dictcur.execute(
+        "SELECT * FROM player_info WHERE id = ANY(%s)", 
+        (player_ids,)
+    )
+    result = dictcur.fetchall()  # Get all players with the specified ids
+
+    if not result:
+        raise HTTPException(status_code=404, detail="No data found")
+    return result
 #netstat -ano | findstr :8000

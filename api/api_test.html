@@ -94,24 +94,20 @@
 <body>
     <h1>Fetch Batting Info</h1>
 
-    <label for="game_number">Game Number:</label>
-    <input type="number" id="game_number" min="1" value="1"><br>
+    <label for="game_id">Game ID:</label>
+    <input type="number" id="game_id" min="1" value="1"><br>
+    <!-- <label for="date">Date (YYYY-MM-DD):</label>
+    <input type="text" id="date" placeholder="YYYY-MM-DD" value="2024-10-10"><br> -->
 
-    <label for="date">Date (YYYY-MM-DD):</label>
-    <input type="text" id="date" placeholder="YYYY-MM-DD" value="2024-10-10"><br>
-
-    <button id="fetchButton">Fetch Data</button>
-
+    <button id="game_info">Fetch game_info</button>
+    <button id="player_info">Fetch player_info</button>
     <h2>Result:</h2>
     <pre id="result"></pre>
 
     <script>
-        document.getElementById('fetchButton').addEventListener('click', async () => {
-            const gameNumber = document.getElementById('game_number').value;
-            const date = document.getElementById('date').value;
-
-            const url = `/batting_info/${gameNumber}/${date}`;
-
+        document.getElementById('game_info').addEventListener('click', async () => {
+            const gameID = document.getElementById('game_id').value;
+            const url = `/game_info/${gameID}`;
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -120,7 +116,32 @@
                     if (response.status === 404) {
                         errorMessage = "Error: No data found for the provided game number and date.";
                     } else if (response.status === 422) {
-                        errorMessage = "Error: Invalid date format. Please use YYYY-MM-DD.";
+                        errorMessage = "Error: Invalid date format.";
+                    } else if (response.status >= 500) {
+                        errorMessage = "Error: Server is currently unavailable. Please try again later.";
+                    }
+                    throw new Error(errorMessage);
+                }
+                const data = await response.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                // Display the error message directly in the result section
+                document.getElementById('result').textContent = `Error: ${error.message}`;
+                document.getElementById('result').className = 'error'; // Add error class for styling
+            }
+        });
+        document.getElementById('player_info').addEventListener('click', async () => {
+            const gameID = document.getElementById('game_id').value;
+            const url = `/player_info/${gameID}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    // Handle HTTP errors
+                    let errorMessage = `Error: ${response.status} - ${response.statusText}`;
+                    if (response.status === 404) {
+                        errorMessage = "Error: No data found for the provided game number and date.";
+                    } else if (response.status === 422) {
+                        errorMessage = "Error: Invalid date format.";
                     } else if (response.status >= 500) {
                         errorMessage = "Error: Server is currently unavailable. Please try again later.";
                     }

@@ -3,18 +3,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
-import time, threading, sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from db_config import get_db_connection
+import time, threading
 from dashboard import get_dashboard_data
 from TextBroadCast import fetch_broadcast_data
 from data_converter import convert_dashboard_data_to_json, convert_textBroadCast_to_json
-from insert_data import insert_broadcast_data
 
 main_page_url = "https://www.cpbl.com.tw/box"
 Curr_ID = 0
 DATE = ""
-conn = get_db_connection()
 #192.168.0.12
 #uvicorn main:app --host 192.168.0.12 --port 8000
 
@@ -59,7 +55,6 @@ def get_game_data(driver):
     broadcast_thread.start()
     dashboard_thread.join()
     broadcast_thread.join()
-    insert_broadcast_data(conn)
     
 if __name__ == "__main__":
     input_date = input("輸入日期(yyyy-mm-dd / latest): ")

@@ -1,0 +1,12 @@
+.venv
+.env
+models.sql
+poetry.lock
+__pycache__/
+*.pyc
+*.pyo
+.vscode
+dashboard_data.json
+text_broadcast_data.json
+tempCodeRunnerFile.py
+settings.json
