@@ -6,42 +6,39 @@ from db_config import get_db_connection
 
 conn = get_db_connection()
 
-def insert_broadcast_data():
-    json_file = os.path.join(os.path.dirname(__file__), "text_broadcast_data.json")
-    with open(json_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+def insert_broadcast_data(data):
     cur = conn.cursor()
     insert_query = """
-        INSERT INTO batting_info (
-            game_number, game_date, inning, team_logo, batter_name, batter_avatar,
-            pitcher_name, pitching_info, score, batting_result, score_change
+        INSERT INTO game_event (
+            game_id, inning_time, inning_name, batter_name, pitcher_name,
+            batting_details, batting_summary, batting_result, batting_number, batting_order, current_score
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
     check_query = """
-        SELECT 1 FROM batting_info WHERE game_number = %s AND game_date = %s
+        SELECT 1 FROM game_event WHERE game_id = %s
     """
-
-    cur.execute(check_query, (data["game_number"], data["date"]))
+    
+    cur.execute(check_query, (data[0]["game_id"],))
     result = cur.fetchone()
     if result:
-        print(f"batting_info for game {data['game_number']} on {data['date']} already exists.")
+        print(f"game_event for game {data[0]["game_id"]} already exists.")
     else :
-        for record in data["inning_records"]:
+        for record in data:
             cur.execute(insert_query, (
-                data["game_number"],
-                data["date"],
-                record["inning"],
-                record["offense_team_icon"],
+                record["game_id"],
+                record["inning_time"],
+                record["inning_name"],
                 record["batter_name"],
-                record["batter_img"],
                 record["pitcher_name"],
-                record["pitch_info"],   
-                record["score"],
-                record["batting_result"],
-                record["scoreChange"]
+                record["batting_details"],
+                record["batting_summary"],
+                record["batting_result"],   
+                record["batting_number"],
+                record["batting_order"],
+                record["current_score"]
             ))
-        print(f"batting_info for game {data['game_number']} on {data['date']} inserted to database.")
+        print(f"game_event for game {data[0]["game_id"]} inserted to database.")
     conn.commit()
     cur.close()
 

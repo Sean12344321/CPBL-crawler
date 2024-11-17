@@ -29,4 +29,4 @@ go to api folder
 uvicorn main:app --reload
 ```
 
-!!shouldn't touch crawler code
+!!Do not touch crawler code

@@ -4,157 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Batting Info Fetch</title>
-    <style>
-        /* Main styling for a sleek dark theme */
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #001F3F; /* Dark blue background */
-            color: #FFFFFF; /* White text for better contrast */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-        }
-
-        h1 {
-            margin-bottom: 20px;
-            font-size: 2.5em; /* Larger title */
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
-        }
-
-        label {
-            font-weight: bold;
-            margin-right: 10px;
-            font-size: 1.2em; /* Slightly larger label font */
-        }
-
-        input[type="number"],
-        input[type="text"] {
-            padding: 12px;
-            margin-bottom: 20px;
-            border: none;
-            border-radius: 5px;
-            width: 300px; /* Increased width */
-            transition: all 0.3s ease; /* Animation on focus */
-            font-size: 1em; /* Consistent font size */
-            box-shadow: 0 0 5px rgba(255, 255, 255, 0.3); /* Light shadow for inputs */
-        }
-
-        input[type="number"]:focus,
-        input[type="text"]:focus {
-            border: 2px solid #FF851B; /* Orange border on focus */
-            outline: none; /* Remove default outline */
-        }
-
-        button {
-            background-color: #FF851B; /* Orange button */
-            color: #FFFFFF; /* White text */
-            border: none;
-            border-radius: 5px;
-            padding: 12px 25px;
-            cursor: pointer;
-            font-size: 1.2em; /* Larger button font */
-            transition: background-color 0.3s ease; /* Animation on hover */
-            box-shadow: 0 0 10px rgba(255, 133, 27, 0.5); /* Shadow effect for button */
-        }
-
-        button:hover {
-            background-color: #FF4136; /* Red on hover */
-        }
-
-        /* Full-width result area */
-        #result {
-            margin-top: 20px;
-            white-space: pre-wrap; /* Allows text to wrap */
-            background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent background */
-            border-radius: 5px;
-            width: 100%; /* Full width for result area */
-            padding: 20px; /* Padding inside result area */
-            max-height: 400px; /* Max height for scrolling */
-            overflow-y: auto; /* Scroll if text overflows */
-            font-size: 1.2em; /* Larger font for better readability */
-            color: #FFD700; /* Gold color for result text */
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); /* Soft white shadow */
-            transition: background-color 0.3s ease; /* Transition for hover effect */
-        }
-
-        #result:hover {
-            background-color: rgba(255, 255, 255, 0.2); /* Lighten on hover */
-        }
-
-        .error {
-            color: #FFA500; /* Orange for error messages */
-        }
-    </style>
 </head>
 <body>
     <h1>Fetch Batting Info</h1>
-
-    <label for="game_id">Game ID:</label>
-    <input type="number" id="game_id" min="1" value="1"><br>
-    <!-- <label for="date">Date (YYYY-MM-DD):</label>
-    <input type="text" id="date" placeholder="YYYY-MM-DD" value="2024-10-10"><br> -->
-
+    <input type="number" id="game_id" placeholder="Game ID" value="1">
+    <label for="time">Time (HH:mm:ss):</label>
+    <input type="text" id="time" name="time" value="00:00:00" placeholder="HH:mm:ss">
+    
     <button id="game_info">Fetch game_info</button>
     <button id="player_info">Fetch player_info</button>
+    <button id="previous_event_info">Fetch previous_event_info</button>
+    <button id="near_event_info">Fetch nearest_event_info</button>
+
     <h2>Result:</h2>
     <pre id="result"></pre>
 
     <script>
-        document.getElementById('game_info').addEventListener('click', async () => {
-            const gameID = document.getElementById('game_id').value;
-            const url = `/game_info`;
+        const handleFetch = async (url) => {
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    // Handle HTTP errors
-                    let errorMessage = `Error: ${response.status} - ${response.statusText}`;
-                    if (response.status === 404) {
-                        errorMessage = "Error: No data found for the provided game number and date.";
-                    } else if (response.status === 422) {
-                        errorMessage = "Error: Invalid date format.";
-                    } else if (response.status >= 500) {
-                        errorMessage = "Error: Server is currently unavailable. Please try again later.";
-                    }
-                    throw new Error(errorMessage);
-                }
+                if (!response.ok) throw new Error(`Error: ${response.status} - ${response.statusText}`);
                 const data = await response.json();
                 document.getElementById('result').textContent = JSON.stringify(data, null, 2);
             } catch (error) {
-                // Display the error message directly in the result section
                 document.getElementById('result').textContent = `Error: ${error.message}`;
-                document.getElementById('result').className = 'error'; // Add error class for styling
             }
-        });
-        document.getElementById('player_info').addEventListener('click', async () => {
-            const gameID = document.getElementById('game_id').value;
-            const url = `/player_info/${gameID}`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    // Handle HTTP errors
-                    let errorMessage = `Error: ${response.status} - ${response.statusText}`;
-                    if (response.status === 404) {
-                        errorMessage = "Error: No data found for the provided game number and date.";
-                    } else if (response.status === 422) {
-                        errorMessage = "Error: Invalid date format.";
-                    } else if (response.status >= 500) {
-                        errorMessage = "Error: Server is currently unavailable. Please try again later.";
-                    }
-                    throw new Error(errorMessage);
-                }
-                const data = await response.json();
-                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
-            } catch (error) {
-                // Display the error message directly in the result section
-                document.getElementById('result').textContent = `Error: ${error.message}`;
-                document.getElementById('result').className = 'error'; // Add error class for styling
-            }
-        });
+        };
+
+        document.getElementById('game_info').addEventListener('click', () => handleFetch('/get_game_info'));
+        document.getElementById('player_info').addEventListener('click', () => handleFetch(`/get_player_info/${document.getElementById('game_id').value}`));
+        document.getElementById('previous_event_info').addEventListener('click', () => handleFetch(`/get_game_events_before_time/${document.getElementById('game_id').value}/${document.getElementById('time').value}`));
+        document.getElementById('near_event_info').addEventListener('click', () => handleFetch(`/get_game_events_near_time/${document.getElementById('game_id').value}/${document.getElementById('time').value}`));
     </script>
 </body>
 </html>
