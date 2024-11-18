@@ -18,6 +18,7 @@ Replace the old chromedriver.exe in your project or PATH with the new one.
 
 ```bash
  pipx install poetry
+ poetry init
  poetry install
 ```
 
