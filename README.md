@@ -17,10 +17,11 @@ Replace the old chromedriver.exe in your project or PATH with the new one.
 ### Install Poetry and Project Dependencies
 
 ```bash
+ pip install pipx
  pipx install poetry
+ poetry init
  poetry install
 ```
-
 ## Usage
 
 go to api folder
