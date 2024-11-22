@@ -21,7 +21,11 @@ Replace the old chromedriver.exe in your project or PATH with the new one.
  poetry init
  poetry install
 ```
+or
 
+```bash
+pip install uvicorn
+```
 ## Usage
 
 go to api folder
