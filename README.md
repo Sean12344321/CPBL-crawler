@@ -25,6 +25,7 @@ or
 
 ```bash
 pip install uvicorn
+pip install fastapi
 ```
 ## Usage
 
