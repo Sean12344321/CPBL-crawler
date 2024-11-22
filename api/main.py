@@ -229,8 +229,8 @@ async def read_item(game_id: int = Path(..., ge=1), time: str = Path(description
         raise HTTPException(status_code=404, detail="No data found with inning_time smaller than input time")
     return [dict(row) for row in result]
 
-if __name__ == '__main__':
-    ip_address = "0.0.0.0"
-    uvicorn.run(app, host=ip_address, port=8000)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))  # Default to 8000 if PORT is not set
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 #venv\Scripts\activate
