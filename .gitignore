@@ -1,5 +1,4 @@
 .venv
-.env
 models.sql
 poetry.lock
 __pycache__/
