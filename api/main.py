@@ -1,12 +1,14 @@
-from fastapi import FastAPI, Path, HTTPException
+from fastapi import FastAPI, Path, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg2.extras import RealDictCursor
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from datetime import datetime
-import socket, uvicorn, sys, os, time, threading
+import uvicorn, sys, os, asyncio, json
+from typing import Dict
 from model import BettingInfoCreate, BettingInfoUpdate
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from db_config import get_db_connection
+
 conn = get_db_connection()
 app = FastAPI()
 app.add_middleware(
@@ -16,56 +18,50 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+betting_odds_cache: Dict[int, Dict] = {}
 
 @app.get("/")
 async def get_root():
     return RedirectResponse(url="/docs")
 
-betting_cache = {}
-def update_betting_odds(game_id: int):
+def get_betting_odds(game_id: int):
+    print(f"update betting odds for {game_id}")
     dictcur = conn.cursor(cursor_factory=RealDictCursor)
     dictcur.execute("""
         SELECT bet_side, bet_amount
         FROM betting_info
         WHERE game_id = %s
+        AND settled = FALSE
     """, (game_id,))
     data = dictcur.fetchall()
 
-    if len(data) > 0:
-        away_bets = 1 #prevent division by zero
-        home_bets = 1
-        edge = 0.005
-        for item in data:
-            if item["bet_side"] == "home":
-                home_bets += item["bet_amount"]
-            else:
-                away_bets += item["bet_amount"]
-        total_bets = away_bets + home_bets
-        if total_bets == 0:
-            return  
-        home_odds = total_bets / home_bets
-        away_odds = total_bets / away_bets
-        home_odds = min(10, home_odds * (1 - edge))
-        away_odds = min(10, away_odds * (1 - edge))
-        betting_cache[game_id] = {
-            "data": {"home_odds": home_odds, "away_odds": away_odds},
-            "timestamp": time.time()
-        }
+    away_bets = 0 
+    home_bets = 0
+    for item in data:
+        if item["bet_side"] == "home":
+            home_bets += item["bet_amount"]
+        else:
+            away_bets += item["bet_amount"]
+    total_bets = home_bets + away_bets
+    if(total_bets == 0):
+        return {"home": 0, "away": 0, "home_rate": 0, "away_rate": 0}
+    home_rate = 10 if home_bets == 0 else min(10, total_bets / home_bets)
+    away_rate = 10 if away_bets == 0 else min(10, total_bets / away_bets)
+    return {"home": home_bets, "away": away_bets, "home_rate": home_rate, "away_rate": away_rate}
 
-def is_cache_valid(game_id: int) -> bool: 
-    if game_id not in betting_cache:
-        return False
-    return time.time() - betting_cache[game_id]["timestamp"] < 5
-
-@app.get("/betting_odd/{game_id}")
-async def get_betting_odd(game_id: int=Path(..., ge=1)):
-    if not is_cache_valid(game_id):
-        update_betting_odds(game_id)
-        print("not valid")
-    
-    if game_id not in betting_cache or betting_cache[game_id]["data"] is None:
-        raise HTTPException(status_code=400, detail="No betting data found.")
-    return betting_cache[game_id]["data"]
+@app.get("/sse-betting-odds/{game_id}")
+async def sse_betting_odds(game_id: int, request: Request):
+    """
+    Stream betting odds for a specific game_id to the frontend using SSE.
+    """
+    async def event_generator():
+        while True:
+            if await request.is_disconnected():
+                break # Stop sending events if the client disconnects
+            current_data = betting_odds_cache.get(game_id)
+            yield f"data: {json.dumps(current_data)}\n\n"
+            await asyncio.sleep(1)  
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.post("/batting_item/")
 async def create_item(item: BettingInfoCreate):
@@ -89,12 +85,14 @@ async def create_item(item: BettingInfoCreate):
     if result is None:
         raise HTTPException(status_code=404, detail="Game not found.")
     dictcur.execute("""
-        INSERT INTO betting_info (username, game_id, bet_amount, bet_side, end_time)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO betting_info (username, game_id, bet_amount, bet_side, end_time, settled)
+        VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (username, game_id) DO NOTHING
-    """, (item.username, item.game_id, item.bet_amount, item.bet_side, item.end_time))
+    """, (item.username, item.game_id, item.bet_amount, item.bet_side, item.end_time, False))
+
     if dictcur.rowcount == 0:  
         raise HTTPException(status_code=400, detail="Betting record already exists.")
+    
     conn.commit()
     return {"message": "Bet has been placed successfully."}
 
@@ -121,8 +119,17 @@ async def update_item(item: BettingInfoUpdate):
     result = dictcur.fetchone()
     if not result:
         raise HTTPException(status_code=404, detail="Betting record not found.")
+    if result["settled"]:
+        raise HTTPException(status_code=400, detail="Betting record has already been settled.")
     conn.commit()
     return {"message": "Bet has been updated successfully."}
+
+@app.delete("/batting_item")
+async def delete_all_items():
+    dictcur = conn.cursor(cursor_factory=RealDictCursor)
+    dictcur.execute("""DELETE FROM betting_info""")
+    conn.commit()
+    return {"message": "All bets have been deleted successfully."}
 
 @app.delete("/batting_item/{username}/{game_id}")
 async def delete_item(username: str, game_id: int):
@@ -137,6 +144,8 @@ async def delete_item(username: str, game_id: int):
     result = dictcur.fetchone()
     if not result:
         raise HTTPException(status_code=404, detail="Betting record not found.")
+    if result["settled"]:
+        raise HTTPException(status_code=400, detail="Betting record has already been settled.")
     conn.commit()
     return {"message": "Bet has been deleted successfully."}
 
@@ -228,6 +237,102 @@ async def read_item(game_id: int = Path(..., ge=1), time: str = Path(description
     if not result:
         raise HTTPException(status_code=404, detail="No data found with inning_time smaller than input time")
     return [dict(row) for row in result]
+
+def settle_and_update_points():
+    """
+    Settle records and update user points based on betting outcomes.
+    """
+    dictcur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        # Step 1: Find unsettled records and calculate totals for each betting side
+        query_unsettled = """
+            SELECT
+                bet_side,
+                SUM(bet_amount) AS total_bet
+            FROM betting_info
+            WHERE end_time < CURRENT_TIMESTAMP
+            AND settled = FALSE
+            GROUP BY bet_side;
+        """
+        dictcur.execute(query_unsettled)
+        totals = dictcur.fetchall()
+
+        # Calculate the total bets on home and away
+        total_home = next((row['total_bet'] for row in totals if row['bet_side'] == 'home'), 0)
+        total_away = next((row['total_bet'] for row in totals if row['bet_side'] == 'away'), 0)
+
+        if total_home + total_away == 0:
+            print("No bets to settle.")
+            return
+
+        # Calculate betting rates
+        total_bets = total_home + total_away
+        home_rate = 10 if total_home == 0 else min(10, total_bets / total_home)
+        away_rate = 10 if total_away == 0 else min(10, total_bets / total_away)
+
+        # Step 2: Update user points based on their bets
+        query_user_update = """
+            UPDATE users
+            SET point = point + COALESCE((
+                SELECT CASE 
+                    WHEN bet_side = 'away' THEN bet_amount * (%(away_rate)s - 1)
+                    ELSE -bet_amount
+                END
+                FROM betting_info
+                WHERE betting_info.username = users.username
+                AND betting_info.settled = FALSE
+                AND betting_info.end_time < CURRENT_TIMESTAMP
+            ), 0)
+            WHERE EXISTS (
+                SELECT 1
+                FROM betting_info
+                WHERE betting_info.username = users.username
+                AND betting_info.settled = FALSE
+                AND betting_info.end_time < CURRENT_TIMESTAMP
+            );
+        """
+        dictcur.execute(query_user_update, {"home_rate": home_rate, "away_rate": away_rate})
+
+        # Step 3: Mark records as settled
+        query_update_settled = """
+            UPDATE betting_info
+            SET settled = TRUE
+            WHERE end_time < CURRENT_TIMESTAMP
+            AND settled = FALSE;
+        """
+        dictcur.execute(query_update_settled)
+
+        conn.commit()
+        print(f"Settled records and updated user points at {datetime.now()}.")
+
+    except Exception as e:
+        print(f"Error settling records or updating points: {e}")
+        conn.rollback()
+        
+async def update_betting_odds():
+    while True:
+        global betting_odds_cache
+        active_game_ids = [1]  
+        for game_id in active_game_ids:
+            betting_odds_cache[game_id] = get_betting_odds(game_id)
+        await asyncio.sleep(1)
+
+async def periodic_settled_update():
+    """
+    Periodically update settled records every 10 seconds.
+    """
+    while True:
+        settle_and_update_points()
+        await asyncio.sleep(10)  # Wait 10 seconds
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    Start the periodic task on server startup.
+    """
+    asyncio.create_task(periodic_settled_update())
+    asyncio.create_task(update_betting_odds())
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))  # Default to 8000 if PORT is not set

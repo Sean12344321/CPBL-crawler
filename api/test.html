@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Betting Odds Test</title>
+    <h1 id="odds"></h1>
+</head>
+<body>
+    <h1>Betting Odds</h1>
+    <div id="odds">Waiting for updates...</div>
+    
+    <!-- Buttons for Connect and Disconnect -->
+    <button id="connect-btn">Connect</button>
+    <button id="disconnect-btn">Disconnect</button>
+
+    <script>
+        let eventSource = null; // Declare the EventSource outside for global access
+
+        // Function to connect to the SSE
+        function connectToSSE() {
+            if (eventSource) {
+                console.log("Already connected.");
+                return;
+            }
+
+            const gameId = 1; // Replace with the actual game ID as needed
+            eventSource = new EventSource(`http://localhost:8000/sse-betting-odds/${gameId}`);
+
+            eventSource.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                console.log(data);
+                const home = data.home;
+                const away = data.away;
+                const home_rate = data.home_rate;
+                const away_rate = data.away_rate;
+                // Update your UI with the new odds
+                document.getElementById("odds").innerText = `${home}, ${away}, ${home_rate}, ${away_rate}`;
+            };
+
+            eventSource.onerror = function () {
+                console.log("Error occurred. Attempting to reconnect...");
+            };
+
+            console.log("Connected to SSE.");
+        }
+
+        // Function to disconnect from the SSE
+        function disconnectFromSSE() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                console.log("Disconnected from SSE.");
+                document.getElementById("odds").innerText = "Disconnected.";
+            } else {
+                console.log("No active SSE connection to disconnect.");
+            }
+        }
+
+        // Attach event listeners to buttons
+        document.getElementById("connect-btn").addEventListener("click", connectToSSE);
+        document.getElementById("disconnect-btn").addEventListener("click", disconnectFromSSE);
+    </script>
+</body>
+</html>
