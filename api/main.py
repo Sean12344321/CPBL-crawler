@@ -251,13 +251,12 @@ def settle_and_update_points():
                 bet_side,
                 SUM(bet_amount) AS total_bet
             FROM betting_info
-            WHERE end_time < CURRENT_TIMESTAMP
+            WHERE end_time < %s
             AND settled = FALSE
             GROUP BY bet_side;
         """
-        dictcur.execute(query_unsettled)
+        dictcur.execute(query_unsettled, (datetime.now(),))
         totals = dictcur.fetchall()
-
         # Calculate the total bets on home and away
         total_home = next((row['total_bet'] for row in totals if row['bet_side'] == 'home'), 0)
         total_away = next((row['total_bet'] for row in totals if row['bet_side'] == 'away'), 0)
@@ -282,33 +281,32 @@ def settle_and_update_points():
                 FROM betting_info
                 WHERE betting_info.username = users.username
                 AND betting_info.settled = FALSE
-                AND betting_info.end_time < CURRENT_TIMESTAMP
+                AND betting_info.end_time < %(time)s
             ), 0)
             WHERE EXISTS (
                 SELECT 1
                 FROM betting_info
                 WHERE betting_info.username = users.username
                 AND betting_info.settled = FALSE
-                AND betting_info.end_time < CURRENT_TIMESTAMP
+                AND betting_info.end_time < %(time)s
             );
         """
-        dictcur.execute(query_user_update, {"home_rate": home_rate, "away_rate": away_rate})
+        dictcur.execute(query_user_update, {"home_rate": home_rate, "away_rate": away_rate, "time": datetime.now()})
 
         # Step 3: Mark records as settled
         query_update_settled = """
             UPDATE betting_info
             SET settled = TRUE
-            WHERE end_time < CURRENT_TIMESTAMP
+            WHERE end_time < %s
             AND settled = FALSE;
         """
-        dictcur.execute(query_update_settled)
+        dictcur.execute(query_update_settled, (datetime.now(),))
 
         conn.commit()
         print(f"Settled records and updated user points at {datetime.now()}.")
 
     except Exception as e:
         print(f"Error settling records or updating points: {e}")
-        conn.rollback()
         
 async def update_betting_odds():
     while True:
