@@ -25,7 +25,6 @@ async def get_root():
     return RedirectResponse(url="/docs")
 
 def get_betting_odds(game_id: int):
-    print(f"update betting odds for {game_id}")
     dictcur = conn.cursor(cursor_factory=RealDictCursor)
     dictcur.execute("""
         SELECT bet_side, bet_amount
@@ -63,8 +62,8 @@ async def sse_betting_odds(game_id: int, request: Request):
             await asyncio.sleep(1)  
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-@app.post("/batting_item_create/")
-async def create_item(item: BettingInfoCreate):
+@app.post("/batting_item_create_and_update/")
+async def update_item(item: BettingInfoCreate):
     dictcur = conn.cursor(cursor_factory=RealDictCursor)
     dictcur.execute("""
         SELECT point
@@ -73,56 +72,42 @@ async def create_item(item: BettingInfoCreate):
     """, (item.username,))
     user = dictcur.fetchone()
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
+        return {"User not found."}
     if user['point'] < item.bet_amount:
-        raise HTTPException(status_code=400, detail="Insufficient points to place the bet.")
+        return {"Insufficient points to place the bet."}
+    # check if the record exists
     dictcur.execute("""
-        SELECT id
-        FROM game
-        WHERE id = %s
-    """, (item.game_id,))
+        SELECT *
+        FROM betting_info
+        WHERE username = %s AND game_id = %s
+    """, (item.username, item.game_id))
     result = dictcur.fetchone()
     if result is None:
-        raise HTTPException(status_code=404, detail="Game not found.")
-    dictcur.execute("""
+        #create record
+        dictcur.execute("""
         INSERT INTO betting_info (username, game_id, bet_amount, bet_side, end_time, settled)
         VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (username, game_id) DO NOTHING
-    """, (item.username, item.game_id, item.bet_amount, item.bet_side, item.end_time, False))
-
-    if dictcur.rowcount == 0:  
-        raise HTTPException(status_code=400, detail="Betting record already exists.")
+        """, (item.username, item.game_id, item.bet_amount, item.bet_side, item.end_time, False))
     
+        if dictcur.rowcount == 0:  
+            return {"Betting record already exists."}
+    else:
+        dictcur.execute("""
+        UPDATE betting_info
+        SET bet_amount = %s, bet_side = %s
+        WHERE username = %s AND game_id = %s
+        RETURNING *
+        """, (item.bet_amount, item.bet_side, item.username, item.game_id))
+        result = dictcur.fetchone()
+        if not result:
+            return {"Betting record not found."}
+        if result["settled"]:
+            return {"Betting record has already been settled."}
+        
+        
     conn.commit()
-    return {"message": "Bet has been placed successfully."}
-
-@app.put("/batting_item_update/")
-async def update_item(item: BettingInfoUpdate):
-    dictcur = conn.cursor(cursor_factory=RealDictCursor)
-    dictcur.execute("""
-        SELECT point
-        FROM users
-        WHERE username = %s
-    """, (item.username,))
-    user = dictcur.fetchone()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-    if user['point'] < item.bet_amount:
-        raise HTTPException(status_code=400, detail="Insufficient points to place the bet.")
-
-    dictcur.execute("""
-    UPDATE betting_info
-    SET bet_amount = %s, bet_side = %s
-    WHERE username = %s AND game_id = %s
-    RETURNING *
-    """, (item.bet_amount, item.bet_side, item.username, item.game_id))
-    result = dictcur.fetchone()
-    if not result:
-        raise HTTPException(status_code=404, detail="Betting record not found.")
-    if result["settled"]:
-        raise HTTPException(status_code=400, detail="Betting record has already been settled.")
-    conn.commit()
-    return {"message": "Bet has been updated successfully."}
+    return {"message": "Bet has been placed / updated successfully."}
 
 @app.delete("/batting_item_delete")
 async def delete_all_items():
@@ -143,9 +128,9 @@ async def delete_item(username: str, game_id: int):
 
     result = dictcur.fetchone()
     if not result:
-        raise HTTPException(status_code=404, detail="Betting record not found.")
+        return {"Betting record not found."}
     if result["settled"]:
-        raise HTTPException(status_code=400, detail="Betting record has already been settled.")
+        return {"Betting record has already been settled."}
     conn.commit()
     return {"message": "Bet has been deleted successfully."}
 
@@ -161,7 +146,7 @@ async def read_item(username: str, game_id: int):
     result = dictcur.fetchone()
 
     if not result:
-        raise HTTPException(status_code=404, detail="No data found")
+        return {"No data found"}
     return dict(result)
 
 @app.get("/game_info")
@@ -173,7 +158,7 @@ async def read_item():
     result = dictcur.fetchall()
 
     if not result:
-        raise HTTPException(status_code=404, detail="Betting record not found.")
+        return {"Betting record not found."}
     return [dict(row) for row in result]
 
 
@@ -189,7 +174,7 @@ async def read_item(game_id: int=Path(ge = 1)):
     result = dictcur.fetchall() 
 
     if not result:
-        raise HTTPException(status_code=404, detail="No data found")
+        return {"No data found"}
     return [dict(row) for row in result]
 
 @app.get("/game_events_near_time/{game_id}/{time}")
@@ -197,7 +182,7 @@ async def read_item(game_id: int = Path(..., ge=1), time: str = Path(description
     try:
         input_time = datetime.strptime(time, "%H:%M:%S").time()  
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid time format. Please use HH:MM:SS.")
+        return {"Invalid time format. Please use HH:MM:SS."}
     dictcur = conn.cursor(cursor_factory=RealDictCursor)
     dictcur.execute("""
         SELECT game_event.*, 
@@ -212,7 +197,7 @@ async def read_item(game_id: int = Path(..., ge=1), time: str = Path(description
     )
     result = dictcur.fetchall()
     if not result:
-        raise HTTPException(status_code=404, detail="No data found with inning_time smaller than input time")
+        return {"No data found with inning_time smaller than input time"}
     return [dict(row) for row in result]
 
 @app.get("/game_events_before_time/{game_id}/{time}")
@@ -220,7 +205,7 @@ async def read_item(game_id: int = Path(..., ge=1), time: str = Path(description
     try:
         input_time = datetime.strptime(time, "%H:%M:%S").time() 
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid time format. Please use HH:MM:SS.")
+        return {"Invalid time format. Please use HH:MM:SS."}
     dictcur = conn.cursor(cursor_factory=RealDictCursor)
     dictcur.execute("""
         SELECT game_event.*, 
@@ -235,7 +220,7 @@ async def read_item(game_id: int = Path(..., ge=1), time: str = Path(description
     )
     result = dictcur.fetchall()
     if not result:
-        raise HTTPException(status_code=404, detail="No data found with inning_time smaller than input time")
+        return {"No data found with inning_time smaller than input time"}
     return [dict(row) for row in result]
 
 def settle_and_update_points():
