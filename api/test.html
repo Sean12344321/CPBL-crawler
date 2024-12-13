@@ -13,7 +13,15 @@
     <!-- Buttons for Connect and Disconnect -->
     <button id="connect-btn">Connect</button>
     <button id="disconnect-btn">Disconnect</button>
-
+    <element id="bettingForm">
+        <input type="text" id="username" placeholder="Username" />
+        <input type="number" id="betAmount" placeholder="Bet Amount" />
+        <input type="number" id="gameId" placeholder="Game ID" />
+        <input type="text" id="betSide" placeholder="Bet Side" />
+        <input type="datetime-local" id="endTime" placeholder="End Time" />
+        <button id="submitBet">Place Bet</button>
+      </element>
+      <p id="responseMessage" style="color: red;"></p>
     <script>
         let eventSource = null; // Declare the EventSource outside for global access
 
@@ -57,9 +65,60 @@
             }
         }
 
+        async function create_post() {
+            const username = document.getElementById("username").value;
+            const betAmount = parseFloat(document.getElementById("betAmount").value);
+            const gameId = parseInt(document.getElementById("gameId").value);
+            const betSide = document.getElementById("betSide").value;
+            const endTime = document.getElementById("endTime").value;
+            const responseMessage = document.getElementById("responseMessage");
+
+            responseMessage.textContent = ""; // Clear previous messages
+
+            // Validate input (optional for improved user experience)
+            if (!username || !betAmount || !gameId || !betSide || !endTime) {
+                responseMessage.textContent = "Please fill in all the fields.";
+                return;
+            }
+
+            const requestBody = {
+                username,
+                bet_amount: betAmount,
+                game_id: gameId,
+                bet_side: betSide,
+                end_time: endTime,
+            };
+
+            try {
+                const response = await fetch("https://cpbl-crawler-1.onrender.com/batting_item/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestBody),
+                });
+
+                if (!response.ok) {
+                // Fetch error message from the API
+                const error = await response.json();
+                responseMessage.textContent = error.detail;
+                return;
+                }
+
+                const result = await response.json();
+                responseMessage.style.color = "green";
+                responseMessage.textContent = result.message;
+            } catch (err) {
+                responseMessage.textContent = "Failed to place bet. Please try again.";
+                console.error(err);
+            }
+        }
+
+        document.getElementById("submitBet").addEventListener("click", create_post);
         // Attach event listeners to buttons
         document.getElementById("connect-btn").addEventListener("click", connectToSSE);
         document.getElementById("disconnect-btn").addEventListener("click", disconnectFromSSE);
     </script>
 </body>
 </html>
+

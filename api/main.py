@@ -35,7 +35,7 @@ def get_betting_odds(game_id: int):
     """, (game_id,))
     data = dictcur.fetchall()
 
-    away_bets = 0 
+    away_bets = 0
     home_bets = 0
     for item in data:
         if item["bet_side"] == "home":
@@ -63,7 +63,7 @@ async def sse_betting_odds(game_id: int, request: Request):
             await asyncio.sleep(1)  
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-@app.post("/batting_item/")
+@app.post("/batting_item_create/")
 async def create_item(item: BettingInfoCreate):
     dictcur = conn.cursor(cursor_factory=RealDictCursor)
     dictcur.execute("""
@@ -96,7 +96,7 @@ async def create_item(item: BettingInfoCreate):
     conn.commit()
     return {"message": "Bet has been placed successfully."}
 
-@app.put("/batting_item/")
+@app.put("/batting_item_update/")
 async def update_item(item: BettingInfoUpdate):
     dictcur = conn.cursor(cursor_factory=RealDictCursor)
     dictcur.execute("""
@@ -124,7 +124,7 @@ async def update_item(item: BettingInfoUpdate):
     conn.commit()
     return {"message": "Bet has been updated successfully."}
 
-@app.delete("/batting_item")
+@app.delete("/batting_item_delete")
 async def delete_all_items():
     dictcur = conn.cursor(cursor_factory=RealDictCursor)
     dictcur.execute("""DELETE FROM betting_info""")
