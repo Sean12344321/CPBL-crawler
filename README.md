@@ -1,8 +1,6 @@
 已布署到 render (https://cpbl-crawler-1.onrender.com/docs)
 若要程式開發才需要安裝。
 
-程式碼: https://github.com/Sean12344321/CPBL-crawler
-
 ## Installation
 
 ```base
