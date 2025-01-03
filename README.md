@@ -1,3 +1,8 @@
+本專案是一個整合爬蟲與後端 API 的應用程式，
+用於從[a link](https://www.cpbl.com.tw/)爬取最新棒球比賽數據，並儲存至 PostgreSQL 資料庫，通過 FastAPI 提供前端應用所需的 RESTful API。
+
+
+
 已布署到 render (https://cpbl-crawler-1.onrender.com/docs)
 若要程式開發才需要安裝。
 
