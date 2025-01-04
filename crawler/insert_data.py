@@ -11,7 +11,7 @@ def insert_broadcast_data(data):
     insert_query = """
         INSERT INTO game_event (
             game_id, inning_time, inning_name, batter_name, pitcher_name,
-            batting_details, batting_summary, batting_result, batting_number, batting_order, current_score
+            batting_details, batting_result, batting_number, batting_order, current_score, pitches_count
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
 
@@ -32,11 +32,11 @@ def insert_broadcast_data(data):
                 record["batter_name"],
                 record["pitcher_name"],
                 record["batting_details"],
-                record["batting_summary"],
                 record["batting_result"],   
                 record["batting_number"],
                 record["batting_order"],
-                record["current_score"]
+                record["current_score"],
+                record["pitches_count"]
             ))
         print(f"game_event for game {data[0]["game_id"]} inserted to database.")
     conn.commit()
@@ -113,3 +113,33 @@ def insert_game_data(data):
         print(f"Game {data['game_name']} inserted to database.")
     conn.commit()
     cur.close()
+
+def update_broadcast_data(data):
+    try:
+        cur = conn.cursor()
+        update_query = """
+        UPDATE game_event
+        SET pitches_count = %s
+        WHERE batting_details = %s 
+        AND inning_name = %s
+        AND pitcher_name = %s
+        """
+        for record in data:
+            cur.execute(
+                update_query, (
+                    record["pitches_count"],
+                    record["batting_details"],
+                    record["inning_name"],
+                    record["pitcher_name"]
+                )
+            )
+            print(record["pitches_count"])
+            print(record["batting_details"])
+            print(record["inning_name"])
+            print("==================================")
+        conn.commit()
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        conn.rollback()
+    finally:
+        cur.close()

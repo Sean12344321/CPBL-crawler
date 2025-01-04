@@ -1,6 +1,6 @@
 from typing import List
 import json, os
-from insert_data import insert_broadcast_data, insert_or_get_player_id, insert_game_data
+from insert_data import insert_broadcast_data, insert_or_get_player_id, insert_game_data, update_broadcast_data
 
 class batter_performance:
     games_played: int
@@ -145,3 +145,22 @@ def convert_textBroadCast_data_and_insert_to_database(scraped_data):
             "current_score": data.get("current_score", ""),
         })
     insert_broadcast_data(converted_broadcast_data)
+
+def update_textBroadCase_data(scraped_data):
+    converted_data = []
+    for data in scraped_data:
+        converted_data.append({
+            "game_id": data.get("game_id", ""),
+            "inning_name": data.get("inning_name", ""),
+            "inning_time": data.get("inning_time", ""),
+            "batter_name": data.get("batter_name", ""),
+            "pitcher_name": data.get("pitcher_name", ""),
+            "batting_number": data.get("batting_number", ""),
+            "batting_order": data.get("batting_order", ""),
+            "batting_summary": data.get("batting_summary", ""),
+            "batting_result": data.get("batting_result", ""),
+            "batting_details": data.get("batting_details", []),
+            "current_score": data.get("current_score", ""),
+            "pitches_count": data.get("pitches_count", []),
+        })
+    update_broadcast_data(converted_data)

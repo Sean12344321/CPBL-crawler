@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from datetime import datetime
 import uvicorn, sys, os, asyncio, json
 from typing import Dict
-from model import BettingInfoCreate, BettingInfoUpdate
+from model import BettingInfoCreate
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from db_config import get_db_connection
 
@@ -33,7 +33,7 @@ def get_betting_odds(game_id: int):
         AND settled = FALSE
     """, (game_id,))
     data = dictcur.fetchall()
-
+    print(data)
     away_bets = 0
     home_bets = 0
     for item in data:
@@ -296,7 +296,7 @@ def settle_and_update_points():
 async def update_betting_odds():
     while True:
         global betting_odds_cache
-        active_game_ids = [1]  
+        active_game_ids = [1, 2, 3]  
         for game_id in active_game_ids:
             betting_odds_cache[game_id] = get_betting_odds(game_id)
         await asyncio.sleep(1)
